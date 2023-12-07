@@ -17,6 +17,7 @@ const { CHAT_ID, BOT_API } = process.env;
 
 const urls = [
     'https://www.funda.nl/zoeken/huur?selected_area=%5B%22utrecht%22%5D&price=%22-1750%22&bedrooms=%222-%22&floor_area=%2240-%22&publication_date=%221%22&availability=%5B%22available%22%5D&sort=%22date_down%22',
+    'https://www.funda.nl/zoeken/huur?selected_area=%5B%22amsterdam%22%5D&price=%22-1750%22&bedrooms=%222-%22&floor_area=%2240-%22&publication_date=%221%22&availability=%5B%22available%22%5D&sort=%22date_down%22',
 ];
 
 const runTask = async () => {
