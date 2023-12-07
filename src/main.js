@@ -16,7 +16,7 @@ const houses = [];
 const { CHAT_ID, BOT_API } = process.env;
 
 const urls = [
-    'https://www.funda.nl/en/huur/utrecht/beschikbaar/0-1750/40+woonopp/2+slaapkamers/1-dag/',
+    'https://www.funda.nl/zoeken/huur?selected_area=%5B%22utrecht%22%5D&price=%22-1750%22&bedrooms=%222-%22&floor_area=%2240-%22&publication_date=%221%22&availability=%5B%22available%22%5D&sort=%22date_down%22',
 ];
 
 const runTask = async () => {
