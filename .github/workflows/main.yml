@@ -1,4 +1,4 @@
-name: Run Task
+name: main
 on:
   workflow_dispatch:
   schedule:
