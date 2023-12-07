@@ -17,6 +17,8 @@ jobs:
       - name: Running
         run: |
           npm cache clean --force
+          npm i puppeteer
+          npm i jsdom
           npm install
           npm run task
         env:
