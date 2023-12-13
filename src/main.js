@@ -16,8 +16,8 @@ const houses = [];
 const { CHAT_ID, BOT_API } = process.env;
 
 const urls = [
-    'https://www.funda.nl/en/huur/amsterdam/beschikbaar/0-1750/50+woonopp/2+slaapkamer/1-dag',
-    'https://www.funda.nl/en/huur/utrecht/beschikbaar/0-1750/50+woonopp/2+slaapkamer/1-dag'
+    'https://www.funda.nl/zoeken/huur?selected_area=%5B%22amsterdam%22%5D&price=%220-1750%22&object_type=%5B%22apartment%22%5D&availability=%5B%22available%22%5D&bedrooms=%222-%22',
+    'https://www.funda.nl/zoeken/huur?selected_area=%5B%22utrecht%22%5D&price=%220-1750%22&object_type=%5B%22apartment%22%5D&availability=%5B%22available%22%5D&bedrooms=%222-%22',
 ];
 
 const runTask = async () => {
@@ -37,8 +37,48 @@ const runTask = async () => {
         const date = (new Date()).toISOString().split('T')[0];
         houses.forEach(({
             path,
+            room,
+            // income,
+            // residentsAge0to14,
+            // residentsAge15to24,
+            // residentsAge25to44,
+            // residentsAge45to64,
+            // residentsAge65AndOlder,
+            // householdsWithChildren,
+            // shareOfMorocco,
+            // shareOfAntillesOrAruba,
+            // shareOfSuriname,
+            // shareOfTurkey,
+            // neighbourhoodName,
+            // municipalityName,
+            // shareOfNonImmigrants,
+            // residentsCount,
+            // totalImmigrantsCount,
         }) => {
-            let text = `New house on ${date}: [click here](${path})`;
+            let text = `New house on ${date}: [click here](${path}) (${room}).`;
+
+            // if (income) {
+            //     let extraStuff = `
+// residentsIncome: **${income}**
+// neighbourhoodName: **${neighbourhoodName}**
+// municipalityName: **${municipalityName}**
+// residentsAge0to14: **${residentsAge0to14}**
+// residentsAge15to24: **${residentsAge15to24}**
+// residentsAge25to44: **${residentsAge25to44}**
+// residentsAge45to64: **${residentsAge45to64}**
+// residentsAge65AndOlder: **${residentsAge65AndOlder}**
+// householdsWithChildren: **${householdsWithChildren}**
+// residentsCount: **${residentsCount}**
+// totalImmigrantsCount: **${totalImmigrantsCount}**
+// shareOfNonImmigrants: **${shareOfNonImmigrants}**
+// shareOfMorocco: **${shareOfMorocco}**
+// shareOfAntillesOrAruba: **${shareOfAntillesOrAruba}**
+// shareOfSuriname: **${shareOfSuriname}**
+// shareOfTurkey: **${shareOfTurkey}**
+// shareOfTurkey: **${shareOfTurkey}**
+// `;
+//                 text = `${text}\n${extraStuff}`;
+//             }
 
             nodeFetch(`https://api.telegram.org/bot${BOT_API}/sendMessage`, {
                 method: 'POST',
@@ -78,10 +118,13 @@ const runPuppeteer = async (url) => {
 
 
     console.log('parsing funda.nl data');
-    const result = dom.window.document.querySelectorAll('.search-result');
+    const result = dom.window.document.getElementsByClassName("border-light-2 mb-4 border-b pb-4")
     for (const element of result) {
         const urlPath = element?.querySelectorAll('a')?.[0]?.href;
-        const headerSubtitle = element?.querySelector('.search-result__header-subtitle');
+        if  (!urlPath) {  // workaround for fake results
+            continue
+        }
+        const headerSubtitle = element?.querySelector('.text-dark-1');
         const subtitleText = headerSubtitle?.innerHTML?.trim();
 
         let path = urlPath;
@@ -91,8 +134,59 @@ const runPuppeteer = async (url) => {
 
         path = path.replace('?navigateSource=resultlist', '');
         if (path && !pastResults.has(path) && !newResults.has(path)) {
+            let extraDetails = {};
+            // const zipCode = getZipCode(subtitleText || '');
+            const zipCode = null;
+
+            if (zipCode) {
+                const neighbourhoodData = await getNeighbourhoodData(zipCode);
+
+                if (neighbourhoodData) {
+                    const residentsCount = neighbourhoodData?.['AantalInwoners_5']?.value || 0;
+                    const westernImmigrantsCount = neighbourhoodData?.['WestersTotaal_17']?.value || 0;
+                    const nonWesternImmigrantsCount = neighbourhoodData?.['NietWestersTotaal_18']?.value || 0;
+                    const totalImmigrantsCount = westernImmigrantsCount + nonWesternImmigrantsCount;
+                    const income = neighbourhoodData?.['GemiddeldInkomenPerInwoner_66']?.value * 1000;
+
+                    extraDetails = {
+                        ...extraDetails,
+                        income,
+                        residentsAge0to14: neighbourhoodData['k_0Tot15Jaar_8'].value,
+                        residentsAge15to24: neighbourhoodData['k_15Tot25Jaar_9'].value,
+                        residentsAge25to44: neighbourhoodData['k_25Tot45Jaar_10'].value,
+                        residentsAge45to64: neighbourhoodData['k_45Tot65Jaar_11'].value,
+                        residentsAge65AndOlder: neighbourhoodData['k_65JaarOfOuder_12'].value,
+                        householdsWithChildren: neighbourhoodData['HuishoudensMetKinderen_31'].value,
+                        totalImmigrantsCount,
+                        shareOfMorocco: convertResidentsToPercentage(residentsCount, neighbourhoodData['Marokko_19'].value),
+                        shareOfAntillesOrAruba: convertResidentsToPercentage(residentsCount, neighbourhoodData['NederlandseAntillenEnAruba_20'].value),
+                        shareOfSuriname: convertResidentsToPercentage(residentsCount, neighbourhoodData['Suriname_21'].value),
+                        shareOfTurkey: convertResidentsToPercentage(residentsCount, neighbourhoodData['Turkije_22'].value),
+                        shareOfNonImmigrants: convertResidentsToPercentage(residentsCount, residentsCount - totalImmigrantsCount),
+                        neighbourhoodName: neighbourhoodData.neighbourhoodName.value,
+                        municipalityName: neighbourhoodData.municipalityName.value,
+                        residentsCount,
+                    };
+                }
+            }
+
+            if (url.includes("%22700-900%22")) {
+                extraDetails = {
+                    ...extraDetails,
+                    room: "single",
+                };
+            } else {
+                extraDetails = {
+                    ...extraDetails,
+                    room: "double",
+                };
+            }
+
             newResults.add(path);
-            houses.push(path);
+            houses.push({
+                ...extraDetails,
+                path,
+            });
         }
     }
 
