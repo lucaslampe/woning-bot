@@ -18,7 +18,6 @@ jobs:
         run: |
           npm cache clean --force
           npm install
-          npm audit fix --force
           npm run task
         env:
           CHAT_ID: ${{ secrets.CHAT_ID }}
